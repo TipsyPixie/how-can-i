@@ -1,17 +1,18 @@
 GOCMD = go
-BUILD = $(GOCMD) build
+MAIN_PACKAGE = howtodo
+INSTALL = $(GOCMD) install
 CLEAN = $(GOCMD) clean
 TEST = $(GOCMD) test
 #GET = $(GOCMD) get
 
-all: test build
-.PHONY: clean
+all: install test
+.PHONY: install test clean
 
-build:
-	$(BUILD) -v
+install:
+	$(INSTALL) -v $(MAIN_PACKAGE) 
 
 test:
-	$(TEST) -v
+	$(TEST) -v $(MAIN_PACKAGE)
 
 clean:
 	$(CLEAN) -v
