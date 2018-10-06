@@ -3,10 +3,9 @@ MAIN_PACKAGE = howtodo
 INSTALL = $(GOCMD) install
 CLEAN = $(GOCMD) clean
 TEST = $(GOCMD) test
-#GET = $(GOCMD) get
 
+.PHONY: all install test clean
 all: install test
-.PHONY: install test clean
 
 install:
 	$(INSTALL) -v $(MAIN_PACKAGE) 
