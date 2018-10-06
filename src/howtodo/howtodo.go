@@ -49,7 +49,6 @@ func formatVersion() string {
 
 func normalizeQuery(rawQueries []string) string {
     query := fmt.Sprintf("site:%s %s", targetSite, strings.Join(rawQueries, " "))
-
     return url.QueryEscape(query)
 }
 
@@ -64,14 +63,13 @@ func getAnswer(questions []string) string {
 }
 
 func httpGet(url string) string {
-    client := &http.Client{}
-
     request, requestError := http.NewRequest("GET", url, nil)
     if requestError != nil {
         log.Fatal(requestError)
     }
     request.Header.Add("User-Agent", userAgent)
 
+    client := &http.Client{}
     response, responseError := client.Do(request)
     if responseError != nil {
         log.Fatal(requestError)
