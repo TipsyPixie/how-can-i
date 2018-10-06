@@ -6,6 +6,7 @@ import (
     "fmt"
     "log"
     "net/http"
+    "net/url"
     "os"
     "strings"
 )
@@ -14,7 +15,7 @@ const appName = "Howtodo"
 const version = "v1.0.0"
 const maintainer = "S.Hwang <lotsofluck4m@gmail.com>"
 
-const searchUrlTemplate = "https://google.com/search?q=site:%s %s"
+const searchUrlTemplate = "https://google.com/search?q=%s"
 const targetSite = "stackoverflow.com"
 const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36"
 
@@ -46,19 +47,17 @@ func formatVersion() string {
     return fmt.Sprintf("%s %s by %s", appName, version, maintainer)
 }
 
-func normalizeQuery(rawQueries [] string) (trimmedQuery string) {
-    joinedQuery := strings.Join(rawQueries, " ")
-    questionMarkRemovedQuery := strings.Replace(joinedQuery, "?", "", -1)
-    trimmedQuery = strings.Trim(questionMarkRemovedQuery, " ")
-    return
+func normalizeQuery(rawQueries []string) string {
+    query := fmt.Sprintf("site:%s %s", targetSite, strings.Join(rawQueries, " "))
+
+    return url.QueryEscape(query)
 }
 
-func getSearchUrl(query string) (searchUrl string) {
-    searchUrl = fmt.Sprintf(searchUrlTemplate, targetSite, query)
-    return
+func getSearchUrl(query string) string {
+    return fmt.Sprintf(searchUrlTemplate, query)
 }
 
-func getAnswer(questions [] string) string {
+func getAnswer(questions []string) string {
     searchUrl := getSearchUrl(normalizeQuery(questions))
 
     return httpGet(searchUrl)
