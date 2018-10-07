@@ -1,9 +1,10 @@
-package howtodo
+package main
 
 import (
-    "bytes"
     "flag"
     "fmt"
+    "github.com/PuerkitoBio/goquery"
+    "io"
     "log"
     "net/http"
     "net/url"
@@ -27,10 +28,11 @@ func main() {
     // Parse the flags to generate help text for -h flag
     flag.Parse()
 
+    questions := os.Args[1:]
     switch {
     case *linkOnly:
         // TODO: show link
-        fmt.Println("Show link only")
+        fmt.Println(getLink(questions))
     case *showFullAnswer:
         // TODO: show full answer
         fmt.Println("Show full answer")
@@ -38,8 +40,7 @@ func main() {
         fmt.Println(formatVersion())
     default:
         // TODO: show code from the answer
-        questions := os.Args[1:]
-        fmt.Println(getAnswer(questions))
+        fmt.Println("default")
     }
 }
 
@@ -56,13 +57,28 @@ func getSearchUrl(query string) string {
     return fmt.Sprintf(searchUrlTemplate, query)
 }
 
-func getAnswer(questions []string) string {
+func getLink(questions []string) string {
+    const linkSelector = "div#search div.r a"
+
     searchUrl := getSearchUrl(normalizeQuery(questions))
 
-    return httpGet(searchUrl)
+    responseBody := requestSearch(searchUrl)
+    defer responseBody.Close()
+
+    searchResult, parseError := goquery.NewDocumentFromReader(responseBody)
+    if parseError != nil {
+        log.Fatal(parseError)
+    }
+
+    link, found := searchResult.Find(linkSelector).Attr("href")
+    if !found {
+        return "Sorry. Try again with other words."
+    }
+
+    return link
 }
 
-func httpGet(url string) string {
+func requestSearch(url string) io.ReadCloser {
     request, requestError := http.NewRequest("GET", url, nil)
     if requestError != nil {
         log.Fatal(requestError)
@@ -72,10 +88,8 @@ func httpGet(url string) string {
     client := &http.Client{}
     response, responseError := client.Do(request)
     if responseError != nil {
-        log.Fatal(requestError)
+        log.Fatal(responseError)
     }
 
-    responseBuffer := new(bytes.Buffer)
-    responseBuffer.ReadFrom(response.Body)
-    return responseBuffer.String()
+    return response.Body
 }
