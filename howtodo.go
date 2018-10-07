@@ -4,7 +4,6 @@ import (
     "flag"
     "fmt"
     "github.com/PuerkitoBio/goquery"
-    "io"
     "log"
     "net/http"
     "net/url"
@@ -16,9 +15,9 @@ const appName = "Howtodo"
 const version = "v1.0.0"
 const maintainer = "S.Hwang <lotsofluck4m@gmail.com>"
 
-const searchUrlTemplate = "https://google.com/search?q=%s"
-const targetSite = "stackoverflow.com"
-const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36"
+var errorMessages = map[string]string{
+    "RESULT_NOT_FOUND": "Sorry. Try again with other words.",
+}
 
 func main() {
     linkOnly := flag.Bool("l", false, "Show only link to answer")
@@ -39,8 +38,7 @@ func main() {
     case *showVersion:
         fmt.Println(formatVersion())
     default:
-        // TODO: show code from the answer
-        fmt.Println("default")
+        fmt.Println(getAnswer(questions))
     }
 }
 
@@ -49,36 +47,59 @@ func formatVersion() string {
 }
 
 func normalizeQuery(rawQueries []string) string {
+    const targetSite = "stackoverflow.com"
     query := fmt.Sprintf("site:%s %s", targetSite, strings.Join(rawQueries, " "))
     return url.QueryEscape(query)
 }
 
 func getSearchUrl(query string) string {
+    const searchUrlTemplate = "https://google.com/search?q=%s"
     return fmt.Sprintf(searchUrlTemplate, query)
 }
 
-func getLink(questions []string) string {
-    const linkSelector = "div#search div.r a"
+func parseSearchResults(document *goquery.Document) *goquery.Selection {
+    const resultSelector = "div#search div.r a"
+    return document.Find(resultSelector)
+}
 
+func getSearchResults(questions []string) *goquery.Selection {
     searchUrl := getSearchUrl(normalizeQuery(questions))
 
-    responseBody := requestSearch(searchUrl)
-    defer responseBody.Close()
-
-    searchResult, parseError := goquery.NewDocumentFromReader(responseBody)
-    if parseError != nil {
-        log.Fatal(parseError)
+    searchResults := parseSearchResults(getHTTP(searchUrl))
+    if len(searchResults.Nodes) == 0 {
+        log.Fatal(errorMessages["RESULT_NOT_FOUND"])
     }
 
-    link, found := searchResult.Find(linkSelector).Attr("href")
-    if !found {
-        return "Sorry. Try again with other words."
+    return searchResults
+}
+
+func getLink(questions []string) string {
+    link, linkExist := getSearchResults(questions).Attr("href")
+    if !linkExist {
+        log.Fatal(errorMessages["RESULT_NOT_FOUND"])
     }
 
     return link
 }
 
-func requestSearch(url string) io.ReadCloser {
+func getAnswer(questions []string) string {
+    answers := getSearchResults(questions)
+
+    for index := 0; index < len(answers.Nodes); index++ {
+        attributes := answers.Nodes[index].Attr
+        for attrIndex := 0; attrIndex < len(attributes); attrIndex++ {
+            if value := attributes[attrIndex].Val; attributes[attrIndex].Key == "href" {
+                // TODO: check each answer
+                fmt.Println(value)
+            }
+        }
+    }
+
+    return "TEST"
+}
+
+func getHTTP(url string) *goquery.Document {
+    const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36"
     request, requestError := http.NewRequest("GET", url, nil)
     if requestError != nil {
         log.Fatal(requestError)
@@ -91,5 +112,11 @@ func requestSearch(url string) io.ReadCloser {
         log.Fatal(responseError)
     }
 
-    return response.Body
+    defer response.Body.Close()
+    responseDocument, parseError := goquery.NewDocumentFromReader(response.Body)
+    if parseError != nil {
+        log.Fatal(parseError)
+    }
+
+    return responseDocument
 }
