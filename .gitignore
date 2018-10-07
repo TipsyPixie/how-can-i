@@ -1,6 +1,2 @@
 # IDE
 .idea
-
-# Build output
-/bin
-/pkg
