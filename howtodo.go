@@ -99,20 +99,20 @@ func getAnswer(questions []string) string {
 }
 
 func getHTTP(url string) *goquery.Document {
-    const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36"
     request, requestError := http.NewRequest("GET", url, nil)
     if requestError != nil {
         log.Fatal(requestError)
     }
+    const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36"
     request.Header.Add("User-Agent", userAgent)
 
     client := &http.Client{}
     response, responseError := client.Do(request)
+    defer response.Body.Close()
     if responseError != nil {
         log.Fatal(responseError)
     }
 
-    defer response.Body.Close()
     responseDocument, parseError := goquery.NewDocumentFromReader(response.Body)
     if parseError != nil {
         log.Fatal(parseError)
