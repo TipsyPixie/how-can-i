@@ -30,15 +30,13 @@ func main() {
     questions := os.Args[1:]
     switch {
     case *linkOnly:
-        // TODO: show link
         fmt.Println(getLink(questions))
     case *showFullAnswer:
-        // TODO: show full answer
-        fmt.Println("Show full answer")
+        fmt.Println(getAnswer(questions, true))
     case *showVersion:
         fmt.Println(formatVersion())
     default:
-        fmt.Println(getAnswer(questions))
+        fmt.Println(getAnswer(questions, false))
     }
 }
 
@@ -82,20 +80,36 @@ func getLink(questions []string) string {
     return link
 }
 
-func getAnswer(questions []string) string {
-    answers := getSearchResults(questions)
+func getAnswer(questions []string, needFull bool) string {
+    link := getLink(questions)
 
-    for index := 0; index < len(answers.Nodes); index++ {
-        attributes := answers.Nodes[index].Attr
-        for attrIndex := 0; attrIndex < len(attributes); attrIndex++ {
-            if value := attributes[attrIndex].Val; attributes[attrIndex].Key == "href" {
-                // TODO: check each answer
-                fmt.Println(value)
-            }
-        }
+    const answersSelector = "div#answers div.answer"
+    answerDocument := getHTTP(fmt.Sprintf("%s?answertab=votes", link))
+    answers := answerDocument.Find(answersSelector)
+
+    var selectedAnswer *goquery.Selection
+    const acceptedAnswerSelector = "div.accepted-answer.answer"
+    if len(answers.Nodes) == 0 {
+        log.Fatal(errorMessages["RESULT_NOT_FOUND"])
+    } else if acceptedAnswer := answers.Find(acceptedAnswerSelector); len(acceptedAnswer.Nodes) > 0 {
+        selectedAnswer = acceptedAnswer
+    } else {
+        selectedAnswer = answers.First()
     }
 
-    return "TEST"
+    var answerContentBuilder strings.Builder
+
+    const postSelector = "div.post-text"
+    selectedAnswer.Find(postSelector).Contents().Each(
+        func(index int, selection *goquery.Selection) {
+            if (needFull && goquery.NodeName(selection) != "#text") ||
+                (!needFull && (goquery.NodeName(selection) == "pre" || goquery.NodeName(selection) == "code")) {
+               answerContentBuilder.WriteString(selection.Text())
+            }
+        },
+    )
+
+    return answerContentBuilder.String()
 }
 
 func getHTTP(url string) *goquery.Document {
