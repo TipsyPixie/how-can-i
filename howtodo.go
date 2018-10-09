@@ -7,7 +7,6 @@ import (
     "log"
     "net/http"
     "net/url"
-    "os"
     "strings"
 )
 
@@ -27,7 +26,7 @@ func main() {
     // Parse the flags to generate help text for -h flag
     flag.Parse()
 
-    questions := os.Args[1:]
+    questions := flag.Args()
     switch {
     case *linkOnly:
         fmt.Println(getLink(questions))
@@ -98,13 +97,14 @@ func getAnswer(questions []string, needFull bool) string {
     }
 
     var answerContentBuilder strings.Builder
+    answerContentBuilder.WriteString(fmt.Sprintf("%s\n", link))
 
     const postSelector = "div.post-text"
     selectedAnswer.Find(postSelector).Contents().Each(
         func(index int, selection *goquery.Selection) {
             if (needFull && goquery.NodeName(selection) != "#text") ||
                 (!needFull && (goquery.NodeName(selection) == "pre" || goquery.NodeName(selection) == "code")) {
-               answerContentBuilder.WriteString(selection.Text())
+                answerContentBuilder.WriteString(fmt.Sprintf("%s\n", selection.Text()))
             }
         },
     )
