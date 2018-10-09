@@ -1,10 +1,10 @@
 package main
 
 import (
+    "errors"
     "flag"
     "fmt"
     "github.com/PuerkitoBio/goquery"
-    "log"
     "net/http"
     "net/url"
     "strings"
@@ -54,42 +54,58 @@ func getSearchUrl(query string) string {
     return fmt.Sprintf(searchUrlTemplate, query)
 }
 
-func parseSearchResults(document *goquery.Document) *goquery.Selection {
+func parseSearchResultPage(document *goquery.Document) *goquery.Selection {
     const resultSelector = "div#search div.r a"
     return document.Find(resultSelector)
 }
 
-func getSearchResults(questions []string) *goquery.Selection {
+func getSearchResults(questions []string) (*goquery.Selection, error) {
     searchUrl := getSearchUrl(normalizeQuery(questions))
 
-    searchResults := parseSearchResults(getHTTP(searchUrl))
+    resultDocument, searchError := requestGet(searchUrl)
+    if searchError != nil {
+        return nil, searchError
+    }
+
+    searchResults := parseSearchResultPage(resultDocument)
     if len(searchResults.Nodes) == 0 {
-        log.Fatal(errorMessages["RESULT_NOT_FOUND"])
+        return nil, errors.New(errorMessages["RESULT_NOT_FOUND"])
     }
 
-    return searchResults
+    return searchResults, nil
 }
 
-func getLink(questions []string) string {
-    link, linkExist := getSearchResults(questions).Attr("href")
+func getLink(questions []string) (string, error) {
+    searchResult, searchError := getSearchResults(questions)
+    if searchError != nil {
+        return "", searchError
+    }
+
+    link, linkExist := searchResult.Attr("href")
     if !linkExist {
-        log.Fatal(errorMessages["RESULT_NOT_FOUND"])
+        return "", errors.New(errorMessages["RESULT_NOT_FOUND"])
     }
 
-    return link
+    return link, nil
 }
 
-func getAnswer(questions []string, needFull bool) string {
-    link := getLink(questions)
+func getAnswer(questions []string, needFull bool) (string, error) {
+    link, linkError := getLink(questions)
+    if linkError != nil {
+        return "", linkError
+    }
 
     const answersSelector = "div#answers div.answer"
-    answerDocument := getHTTP(fmt.Sprintf("%s?answertab=votes", link))
+    answerDocument, requestError := requestGet(fmt.Sprintf("%s?answertab=votes", link))
+    if requestError != nil {
+        return "", requestError
+    }
     answers := answerDocument.Find(answersSelector)
 
     var selectedAnswer *goquery.Selection
     const acceptedAnswerSelector = "div.accepted-answer.answer"
     if len(answers.Nodes) == 0 {
-        log.Fatal(errorMessages["RESULT_NOT_FOUND"])
+        return "", errors.New(errorMessages["RESULT_NOT_FOUND"])
     } else if acceptedAnswer := answers.Find(acceptedAnswerSelector); len(acceptedAnswer.Nodes) > 0 {
         selectedAnswer = acceptedAnswer
     } else {
@@ -109,13 +125,13 @@ func getAnswer(questions []string, needFull bool) string {
         },
     )
 
-    return answerContentBuilder.String()
+    return answerContentBuilder.String(), nil
 }
 
-func getHTTP(url string) *goquery.Document {
+func requestGet(url string) (*goquery.Document, error)  {
     request, requestError := http.NewRequest("GET", url, nil)
     if requestError != nil {
-        log.Fatal(requestError)
+        return nil, requestError
     }
     const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36"
     request.Header.Add("User-Agent", userAgent)
@@ -124,13 +140,13 @@ func getHTTP(url string) *goquery.Document {
     response, responseError := client.Do(request)
     defer response.Body.Close()
     if responseError != nil {
-        log.Fatal(responseError)
+        return nil, responseError
     }
 
     responseDocument, parseError := goquery.NewDocumentFromReader(response.Body)
     if parseError != nil {
-        log.Fatal(parseError)
+        return nil, parseError
     }
 
-    return responseDocument
+    return responseDocument, nil
 }
