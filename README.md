@@ -37,20 +37,23 @@ Can you come up with a flawless `tar` command in a second? How about `curl` with
    ```bash
    $ cd $GOPATH && go install github.com/TipsyPixie/howtodo
    ```
-1. Wanna know how to slice an array in Python?
+1. Ask em' anything!
    ```bash
-   $ $GOPATH/bin/howtodo -a python array slice
+   $ $GOPATH/bin/howtodo go handle exception
    ```
-   ```bash
-   https://stackoverflow.com/questions/509211/understanding-pythons-slice-notation
+   ```go
+   https://stackoverflow.com/questions/25025467/catching-panics-in-golang
    
-   It's pretty simple really:
-   a[start:end] # items start through end-1
-   a[start:]    # items start through the rest of the array
-   a[:end]      # items from the beginning through end-1
-   a[:]         # a copy of the whole array
-   
-   There is also the step value, which can be used with any of the above:
-   a[start:end:step] # start through not past end, by step
+   func main() {
+       if len(os.Args) != 2 {
+            fmt.Printf("usage: %s [filename]\n", os.Args[0])
+            os.Exit(1)
+       }
+       file, err := os.Open(os.Args[1])
+       if err != nil {
+           log.Fatal(err)
+       }
+       fmt.Printf("%s", file)
+   }
    ...
    ```
