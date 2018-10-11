@@ -33,9 +33,9 @@ Can you come up with a flawless `tar` command in a second? How about `curl` with
    ```bash
    $ go get github.com/TipsyPixie/howtodo
    ```
-1. Go to your GOPATH and compile the code
+1. Compile the code
    ```bash
-   $ cd $GOPATH && go install github.com/TipsyPixie/howtodo
+   $ go install github.com/TipsyPixie/howtodo
    ```
 1. Ask em' anything!
    ```bash
