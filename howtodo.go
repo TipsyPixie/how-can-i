@@ -113,7 +113,7 @@ func getAnswer(questions []string, needFull bool) (string, error) {
     }
 
     var answerContentBuilder strings.Builder
-    answerContentBuilder.WriteString(fmt.Sprintf("%s\n", link))
+    answerContentBuilder.WriteString(fmt.Sprintf("%s\n\n", link))
 
     const postSelector = "div.post-text"
     selectedAnswer.Find(postSelector).Contents().Each(
