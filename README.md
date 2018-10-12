@@ -1,6 +1,6 @@
 # HowToDo
 
-**HowoToDo is a Go ported [howdoi](https://github.com/gleitz/howdoi "gleitz/howdoi")**
+**HowoToDo is Go port of [howdoi](https://github.com/gleitz/howdoi "gleitz/howdoi")**
 
 ## Abstract
 
