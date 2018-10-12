@@ -62,7 +62,9 @@ Instead, simply run `howtodo tar flags` on your command line and there you go!
    ```
 
 ## Usage
-
+```bash
+$ howtodo -h
+```
 ```bash
 Usage of howtodo:
   -a    Show full content of answer
