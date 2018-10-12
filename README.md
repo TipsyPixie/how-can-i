@@ -57,3 +57,12 @@ Can you come up with a flawless `tar` command in a second? How about `curl` with
    }
    ...
    ```
+
+## Usage
+
+```bash
+Usage of howtodo:
+  -a    Show full content of answer
+  -l    Show only link to answer
+  -v    Show version
+```
