@@ -26,109 +26,129 @@ func main() {
     // Parse the flags to generate help text for -h flag
     flag.Parse()
 
-    questions := flag.Args()
+    var output string
+    var err error = nil
+    arguments := flag.Args()
     switch {
     case *linkOnly:
-        fmt.Println(getLink(questions))
+        output, err = getLink(arguments)
     case *showFullAnswer:
-        fmt.Println(getAnswer(questions, true))
+        output, err = getAnswer(arguments, true)
     case *showVersion:
-        fmt.Println(formatVersion())
+        output = formatVersion()
     default:
-        fmt.Println(getAnswer(questions, false))
+        output, err = getAnswer(arguments, false)
     }
+
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+
+    fmt.Println(output)
 }
 
 func formatVersion() string {
     return fmt.Sprintf("%s %s by %s", appName, version, maintainer)
 }
 
-func normalizeQuery(rawQueries []string) string {
+func getSearchURL(queryWords []string) string {
     const targetSite = "stackoverflow.com"
-    query := fmt.Sprintf("site:%s %s", targetSite, strings.Join(rawQueries, " "))
-    return url.QueryEscape(query)
-}
+    singleStringQuery := fmt.Sprintf("site:%s %s", targetSite, strings.Join(queryWords, " "))
 
-func getSearchUrl(query string) string {
     const searchUrlTemplate = "https://google.com/search?q=%s"
-    return fmt.Sprintf(searchUrlTemplate, query)
+    return fmt.Sprintf(searchUrlTemplate, url.QueryEscape(singleStringQuery))
 }
 
-func parseSearchResultPage(document *goquery.Document) *goquery.Selection {
+func parseSearchResult(resultDocument *goquery.Document) *goquery.Selection {
     const resultSelector = "div#search div.r a"
-    return document.Find(resultSelector)
+    return resultDocument.Find(resultSelector)
 }
 
-func getSearchResults(questions []string) (*goquery.Selection, error) {
-    searchUrl := getSearchUrl(normalizeQuery(questions))
-
-    resultDocument, searchError := requestGet(searchUrl)
-    if searchError != nil {
-        return nil, searchError
-    }
-
-    searchResults := parseSearchResultPage(resultDocument)
-    if len(searchResults.Nodes) == 0 {
-        return nil, errors.New(errorMessages["RESULT_NOT_FOUND"])
-    }
-
-    return searchResults, nil
-}
-
-func getLink(questions []string) (string, error) {
-    searchResult, searchError := getSearchResults(questions)
+func getLink(query []string) (string, error) {
+    searchResultPage, searchError := requestGet(getSearchURL(query))
     if searchError != nil {
         return "", searchError
     }
 
-    link, linkExist := searchResult.Attr("href")
+    QNAThreads := parseSearchResult(searchResultPage)
+    linkToFirstThread, linkExist := QNAThreads.Attr("href")
     if !linkExist {
         return "", errors.New(errorMessages["RESULT_NOT_FOUND"])
     }
 
-    return link, nil
+    return linkToFirstThread, nil
 }
 
-func getAnswer(questions []string, needFull bool) (string, error) {
-    link, linkError := getLink(questions)
+func parseQNAThread(QNAThread *goquery.Document) *goquery.Selection {
+    const answersSelector = "div#answers div.answer"
+    answers := QNAThread.Find(answersSelector)
+
+    const acceptedAnswerSelector = "div.accepted-answer.answer"
+    acceptedAnswer := answers.Find(acceptedAnswerSelector)
+
+    if len(acceptedAnswer.Nodes) > 0 {
+        return acceptedAnswer
+    } else if len(answers.Nodes) > 0 {
+        return answers.First()
+    } else {
+        return nil
+    }
+}
+
+func extractCodeBlock(answer *goquery.Selection) string {
+    var codeBlockBuilder strings.Builder
+
+    const postSelector = "div.post-text"
+    answer.Find(postSelector).Contents().Each(
+        func(index int, selection *goquery.Selection) {
+            if goquery.NodeName(selection) == "pre" || goquery.NodeName(selection) == "code" {
+                codeBlockBuilder.WriteString(fmt.Sprintf("%s\n", selection.Text()))
+            }
+        },
+    )
+    return codeBlockBuilder.String()
+}
+
+func extractFullAnswer(answer *goquery.Selection) string {
+    var fullAnswerBuilder strings.Builder
+
+    const postSelector = "div.post-text"
+    answer.Find(postSelector).Contents().Each(
+        func(index int, selection *goquery.Selection) {
+            if goquery.NodeName(selection) != "#text" {
+                fullAnswerBuilder.WriteString(fmt.Sprintf("%s\n", selection.Text()))
+            }
+        },
+    )
+    return fullAnswerBuilder.String()
+}
+
+func getAnswer(query []string, needFull bool) (string, error) {
+    link, linkError := getLink(query)
     if linkError != nil {
         return "", linkError
     }
 
-    const answersSelector = "div#answers div.answer"
-    answerDocument, requestError := requestGet(fmt.Sprintf("%s?answertab=votes", link))
-    if requestError != nil {
-        return "", requestError
+    linkToQNAThread := fmt.Sprintf("%s?answertab=votes", link)
+    QNAThread, threadLinkError := requestGet(linkToQNAThread)
+    if threadLinkError != nil {
+        return "", threadLinkError
     }
-    answers := answerDocument.Find(answersSelector)
 
-    var selectedAnswer *goquery.Selection
-    const acceptedAnswerSelector = "div.accepted-answer.answer"
-    if len(answers.Nodes) == 0 {
-        return "", errors.New(errorMessages["RESULT_NOT_FOUND"])
-    } else if acceptedAnswer := answers.Find(acceptedAnswerSelector); len(acceptedAnswer.Nodes) > 0 {
-        selectedAnswer = acceptedAnswer
+    answer := parseQNAThread(QNAThread)
+
+    var outputBuilder strings.Builder
+    outputBuilder.WriteString(fmt.Sprintf("%s\n\n", link))
+    if needFull {
+        outputBuilder.WriteString(extractCodeBlock(answer))
     } else {
-        selectedAnswer = answers.First()
+        outputBuilder.WriteString(extractFullAnswer(answer))
     }
-
-    var answerContentBuilder strings.Builder
-    answerContentBuilder.WriteString(fmt.Sprintf("%s\n\n", link))
-
-    const postSelector = "div.post-text"
-    selectedAnswer.Find(postSelector).Contents().Each(
-        func(index int, selection *goquery.Selection) {
-            if (needFull && goquery.NodeName(selection) != "#text") ||
-                (!needFull && (goquery.NodeName(selection) == "pre" || goquery.NodeName(selection) == "code")) {
-                answerContentBuilder.WriteString(fmt.Sprintf("%s\n", selection.Text()))
-            }
-        },
-    )
-
-    return answerContentBuilder.String(), nil
+    return outputBuilder.String(), nil
 }
 
-func requestGet(url string) (*goquery.Document, error)  {
+func requestGet(url string) (*goquery.Document, error) {
     request, requestError := http.NewRequest("GET", url, nil)
     if requestError != nil {
         return nil, requestError
