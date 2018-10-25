@@ -15,7 +15,9 @@ const version = "v1.0.0"
 const maintainer = "S.Hwang <lotsofluck4m@gmail.com>"
 
 var errorMessages = map[string]string{
-    "RESULT_NOT_FOUND": "Sorry. Try again with other words.",
+    "RESULT_NOT_FOUND": "Sorry. Try again with other words. ",
+    "REQUEST_ERROR": "Sorry. Unable to get network connection. ",
+    "HTML_PARSE_ERROR": "Sorry. Unable to parse HTML document. ",
 }
 
 func main() {
@@ -43,6 +45,10 @@ func main() {
     if err != nil {
         fmt.Println(err)
         return
+    }
+
+    if exception := recover(); exception != nil {
+        fmt.Printf("Unknown Error:\n%s", exception)
     }
 
     fmt.Println(output)
@@ -158,15 +164,15 @@ func requestGet(url string) (*goquery.Document, error) {
 
     client := &http.Client{}
     response, responseError := client.Do(request)
-    defer response.Body.Close()
     if responseError != nil {
-        return nil, responseError
+        return nil, errors.New(errorMessages["REQUEST_ERROR"])
     }
 
     responseDocument, parseError := goquery.NewDocumentFromReader(response.Body)
     if parseError != nil {
-        return nil, parseError
+        return nil, errors.New(errorMessages["HTML_PARSE_ERROR"])
     }
 
+    response.Body.Close()
     return responseDocument, nil
 }
