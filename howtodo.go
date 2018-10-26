@@ -48,7 +48,7 @@ func main() {
     }
 
     if exception := recover(); exception != nil {
-        fmt.Printf("Unknown Error:\n%s", exception)
+        fmt.Printf("Unknown Error:\n%s\n", exception)
     }
 
     fmt.Println(output)
