@@ -6,7 +6,7 @@
 
 Can you come up with a flawless `tar` command in a second? How about `curl` with some gibberish headers? Do you know how to write a complete `ps`, `rsync`, `ssh`, and `sftp` with all the command line flags you need? **Well, now you know HowToDo, the instant stackoverflow via command line!**
 
-You don't open up a browser, type `www.stckoverflow.com`, and search `tar flags`.
+You don't open up a browser, type `www.stackoverflow.com`, and search `tar flags`.
 Instead, simply run `howtodo tar flags` on your command line and there you go!
 
 ## Requirements
