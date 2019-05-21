@@ -79,6 +79,7 @@ func getLink(query []string) (string, error) {
 
     QNAThreads := parseSearchResult(searchResultPage)
     linkToFirstThread, linkExist := QNAThreads.Attr("href")
+
     if !linkExist {
         return "", errors.New(errorMessages["RESULT_NOT_FOUND"])
     }
@@ -147,9 +148,9 @@ func getAnswer(query []string, needFull bool) (string, error) {
     var outputBuilder strings.Builder
     outputBuilder.WriteString(fmt.Sprintf("%s\n\n", link))
     if needFull {
-        outputBuilder.WriteString(extractCodeBlock(answer))
-    } else {
         outputBuilder.WriteString(extractFullAnswer(answer))
+    } else {
+        outputBuilder.WriteString(extractCodeBlock(answer))
     }
     return outputBuilder.String(), nil
 }
